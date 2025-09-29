@@ -1,0 +1,180 @@
+---
+title: "MiCM: 02 - GSEA and ORA"
+date: "2025-10-23"
+output:
+  html_notebook:
+    df_print: paged
+    code_folding: show
+    toc: yes
+    toc_float: 
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r,echo=FALSE}
+htmltools::img(src = knitr::image_uri("images/micm_color_logo.png"), 
+               alt = 'logo', 
+               style = 'position:absolute; top:15px; right:0; padding:10px; max-width:50%;')
+```
+
+
+This session will guide you to perform gene set enrichment analysis (GSEA) and over representation analysis (ORA).
+
+The objectives of this session are:
+
+* Become familiar with the GSEA and ORA functions
+* Visualize and interpret results from GSEA and ORA
+
+**Note**: All the code in this tutorial will be performed in R (or Rstudio). 
+
+# Dataset
+
+This workshop will use processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028), where they studied the transcriptional response to SARS-CoV-2 infection in three tissues (cornea, limbus, sclera). The dataset consists of 18 samples, with three replicates per tissue and condition (mock vs CoV-2).
+
+We will also use the DESeq2 results from the previous step. If you do not have them, a copy is stored in the data folder.
+```{bash}
+ls ../data/
+```
+Finally, we will also be using annotated gene sets from [MsigDB](https://www.gsea-msigdb.org/gsea/msigdb).
+
+# GSEA workflow
+
+## Load libraries
+
+```{r, message=F}
+library(DESeq2)
+library(ggplot2)
+library(fgsea)
+library(knitr) # Used for formatting output
+library(pheatmap)
+library(GSA)
+library(RColorBrewer)
+set.seed(43) # For reproducibility
+```
+
+## Load the data
+
+Let's load the DESeq2 results and the Hallmark pathway gene set from MsigDB.
+```{r, results=FALSE}
+res<- readRDS("../data/res_Cornea_CoV2_vs_Mock.rds")
+geneset_file <- GSA::GSA.read.gmt("../data/h.all.v2025.1.Hs.symbols.gmt")
+geneSets <- geneset_file$genesets
+names(geneSets)<- geneset_file$geneset.names
+```
+## Running GSEA
+
+The core of the GSEA analysis is done by the fgsea function. To run it, we need to first obtain a vector to rank our genes. 
+```{r}
+head(res)
+geneRanks<- res$stat
+names(geneRanks)<- rownames(res)
+head(geneRanks)
+```
+For GSEA, we will use the Wald test statistics stored in the stat column from the results, which are effectively the log2FoldChange/SE.
+```{r}
+fgseaRes <- fgsea(pathways = geneSets, 
+                  stats    = geneRanks,
+                  eps = 0, # For better p-value estimation
+                  minSize  = 15,
+                  maxSize  = 500)
+```
+### Explore results
+Let's visualize the results.
+```{r, fig.width=7, fig.height=6}
+head(fgseaRes[order(-NES,pval)])
+topPathwaysUp <- fgseaRes[ES > 0][head(order(pval), n=10), pathway]
+topPathwaysDown <- fgseaRes[ES < 0][head(order(pval), n=10), pathway]
+topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
+plotGseaTable(geneSets[topPathways], geneRanks, fgseaRes, 
+              gseaParam=0.5)
+```
+We can visualize also as a simple barplot.
+```{r, fig.width=6, fig.height=6}
+df_gsea<- as.data.frame(fgseaRes)
+df_gsea<- df_gsea[with(df_gsea, pathway %in% topPathways),]
+df_gsea$pathway<- factor(df_gsea$pathway, levels=rev(topPathways)) # convert to factor and order the levels for plotting
+ggplot(df_gsea, aes(x=pathway, y=NES, fill=-log10(padj)) )+
+    geom_bar(stat="identity") +
+    scale_fill_continuous(low="#ffdae0", high="red") + 
+    coord_flip()
+```
+We observe enrichment for TNFa signaling, Interferon gamma response and EMT pathways in CoV2 condition, while proliferation pathway enrichment in the mock.
+
+### Enrichment plots
+We can also visualize the enrichment of a specific pathway
+```{r, fig.width=6, fig.height=6}
+plotEnrichment(geneSets[["HALLMARK_E2F_TARGETS"]],
+               geneRanks) + labs(title="E2F targets")
+
+```
+We observe very strong enrichment for the E2F targets gene set in the mock.
+
+### Visualize leading-edge genes
+
+We can also visualize the leading-edge genes through a heatmap. Let's first reload the counts and obtain the vst using DESeq2.
+```{r}
+raw_counts<- read.table("../data/GSE164073_Eye_count_matrix.tsv", header=T, row.names=1)
+meta<- read.table("../data/GSE164073_Eye_count_meta.tsv", row.names=1)
+meta$Condition<- factor(meta$Condition, levels=c("mock", "CoV2"))
+meta_design<- model.matrix( ~ Condition, data=meta)
+dds <- DESeqDataSetFromMatrix(countData = raw_counts,
+                              colData = meta,
+                              design= meta_design)
+smallestGroupSize <- 3
+keep <- rowSums(counts(dds) >= 10) >= smallestGroupSize
+dds <- dds[keep,]
+vsd <- vst(dds)
+```
+Now, we can visualize the leading edge genes for a particular pathway, in this case, the E2F targets.
+```{r}
+leadingEdges<- unlist(df_gsea[with(df_gsea, pathway == "HALLMARK_E2F_TARGETS"),"leadingEdge"])
+head(leadingEdges)
+# Let's filter for only cornea samples
+meta_subset<- meta[with(meta, Tissue == "cornea"),]
+colors <- colorRampPalette(c("darkblue","white","darkred"))(255)
+pheatmap(assay(vsd[head(leadingEdges,15),rownames(meta_subset)]), annotation_col=meta_subset,col=colors, scale="row")
+```
+# Over representation analysis
+**Note**: We will be running enrichR, which requires to establish a connection to the [Enrichr](https://maayanlab.cloud/Enrichr/) website.
+
+```{r}
+library(enrichR)
+```
+For running the next steps, please make sure that your connection is live: 
+```{r}
+websiteLive <- getOption("enrichR.live")
+websiteLive
+```
+You can check the databases available for GSEA:
+```{r}
+dbs <- listEnrichrDbs()
+head(dbs)
+```
+Let's do an enrichment analysis of genes upregulated in CoV2 using the Hallmark gene set.
+```{r}
+sig_genes<- rownames(res[with(res, abs(log2FoldChange > 1) & padj < 0.05 & !is.na(padj)),])
+# Defining a background as the set of genes tested
+background<- rownames(res)
+enriched <- enrichr(genes=sig_genes, databases=c("MSigDB_Hallmark_2020"), background=background)
+head(enriched[["MSigDB_Hallmark_2020"]])
+```
+We can plot a barplot of the results
+```{r, fig.width=6, fig.heigth=6}
+plotEnrich(enriched[["MSigDB_Hallmark_2020"]], showTerms = 20, numChar = 40, y = "Count", orderBy = "P.value")
+```
+Similar as GSEA, we also observe enrichment for TNF alpha Signaling via NFKB and EMT pathways in the CoV2 condition.
+
+# Exercises
+
+* Run GSEA using a different gene set. You can find the KEGG legacy gene set in the data folder.
+
+# Acknowledgements
+This notebook used material from the following sources:
+
+* [fgsea vignette](https://bioconductor.org/packages/release/bioc/vignettes/fgsea/inst/doc/fgsea-tutorial.html)
+* [enrichR vignette](https://cran.r-project.org/web/packages/enrichR/vignettes/enrichR.html)
+
+# Session info
+```{r}
+sessionInfo()
+```

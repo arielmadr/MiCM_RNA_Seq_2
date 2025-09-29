@@ -1,0 +1,228 @@
+---
+title: "MiCM: 01 - DESeq2"
+date: "2025-10-23"
+output:
+  html_notebook:
+    df_print: paged
+    code_folding: show
+    toc: yes
+    toc_float: 
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r,echo=FALSE}
+htmltools::img(src = knitr::image_uri("images/micm_color_logo.png"), 
+               alt = 'logo', 
+               style = 'position:absolute; top:15px; right:0; padding:10px; max-width:50%;')
+```
+
+This session will guide you to use DESeq2 to identify differentially expressed genes and become familiar with design matrices. The session will also introduce concepts essential for working with real-world data, such as incorporating covariates and interaction terms into models.
+
+The objectives of this session are:
+
+* Obtain familiarity with the DESeq2 workflow
+* Design and configure differential expression models appropriately for RNA-seq data
+
+**Note**: All the code in this tutorial will be performed in R (or Rstudio). 
+
+# Dataset
+
+This workshop will use processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028), where they studied the transcriptional response to SARS-CoV-2 infection in three tissues (cornea, limbus, sclera). The dataset consists of 18 samples, with three replicates per tissue and condition (mock vs CoV-2).
+
+# DEseq2 workflow
+
+## Load libraries
+
+```{r, message=F}
+library(DESeq2)
+library(vsn) # Used for standard deviation vs mean plots
+library(hexbin) # Used for standard deviation vs mean plots
+library(pheatmap) 
+library(RColorBrewer)
+library(EnhancedVolcano)
+library(ggplot2)
+library(ggbeeswarm)
+library(ashr) # Used for log-fold shrinkage
+library(knitr) # Used for formatting output
+```
+
+## Load the data
+
+Let's load the dataset that consists of a raw count matrix and a metadata.
+```{r}
+raw_counts<- read.table("../data/GSE164073_Eye_count_matrix.tsv", header=T, row.names=1)
+meta<- read.table("../data/GSE164073_Eye_count_meta.tsv", row.names=1)
+kable(head(raw_counts[,1:5]))
+kable(head(meta))
+```
+## Create DESeq2 object
+
+The first step is to create a design matrix. Let's start by creating a very simple design matrix.
+```{r}
+# Converting Tissue into a factor
+meta$Tissue<- factor(meta$Tissue)
+# Adjusting levels for Condition, so that mock is the reference
+meta$Condition<- factor(meta$Condition, levels=c("mock", "CoV2"))
+meta_design<- model.matrix( ~ Condition, data=meta)
+kable(head(meta_design))
+```
+This design matrix is answering the question: What are the overall differences between Mock and CoV2, without considering the tissues?
+
+Now, let's create a DESeq2 object.
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = raw_counts,
+                              colData = meta,
+                              design= meta_design)
+dds
+```
+## Pre-filtering
+
+Removing low expressed counts is generally recommended for memory and speed reasons.
+```{r}
+smallestGroupSize <- 3
+keep <- rowSums(counts(dds) >= 10) >= smallestGroupSize
+dds <- dds[keep,]
+dds
+```
+
+## Quality control
+
+### VST
+We can obtain a variance stabilizing transformation
+```{r, fig.width=6, fig.height=6}
+# Obtain the variance stabilizing transformation
+vsd <- vst(dds)
+# Let's compare it to the normal transformation
+ntd <- normTransform(dds)
+meanSdPlot(assay(ntd), ranks=F) # Normal
+meanSdPlot(assay(vsd), ranks=F) # VST
+```
+We observe that the vst removes the dependence of the variance on the mean, which is evident for the low expressed genes.
+
+### Heatmap of the sample-to-sample distances
+We can obtain distances between samples and then plot them as a heatmap. 
+```{r, fig.width=6, fig.height=6}
+sampleDists <- dist(t(assay(vsd)))
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$Tissue, vsd$Condition, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+```
+We observe that in general, samples from the same tissue cluster together, as expected.
+
+### Principal component of the samples
+We can also perform a PCA analysis of the VST counts.
+```{r, fig.width=6, fig.height=6}
+plotPCA(vsd, intgroup=c("Tissue", "Condition")) +
+    geom_point(size=0.5)
+```
+Again, we observe that the first PCA is mostly associated with tissue, although samples can also subcluster between the mock and CoV2 conditions.
+
+## Differential expression
+The standard DE is performed by the DESeq function.
+```{r}
+dds <- DESeq(dds)
+dds
+```
+```{r}
+resultsNames(dds)
+res <- results(dds, name="ConditionCoV2") # This function provides the lof2Fold Changes and p-values for a given coefficient name
+res
+```
+Then, a results table can be generated. In this case, we provide a value in the 'name' argument in the results function, which correspondds to the CoV2 effect encoded in our design matrix. We will also explore other ways to access results in the follow up sections.
+
+## Log-Fold shrinkage
+Shrinkage of the log-fold changes estimates is recommended for visualization and ranking of genes. 
+```{r}
+resLFC <- lfcShrink(dds, coef="ConditionCoV2", type="apeglm")
+```
+The lfcShrink has various shrinkage methods, here we will use apeglm. Again, we look for the CoV2 effect model by setting up the coef argument in the lfcShrink function.
+
+### MA plots
+Let's compare the MA plots between the shrunken FC and the regular FC.
+```{r, fig.width=6, fig.height=6}
+plotMA(res)
+plotMA(resLFC)
+```
+You can see that the shrunken log2 fold changes remove the noise associated with log2 fold changes from low count genes.
+
+### Volcano plot
+```{r, fig.width=6, fig.height=6}
+EnhancedVolcano(resLFC,
+                lab = rownames(resLFC),
+                x = 'log2FoldChange',
+                y = 'pvalue')
+```
+We can explore also the results using a Volcano Plot.
+
+### Plot counts 
+```{r, fig.width=6, fig.height=6}
+geneCounts <- plotCounts(dds, gene = "SOD2", intgroup = c("Condition","Tissue"),returnData = T)
+ggplot(geneCounts, aes(x = Condition, y = log2(count), color = Tissue)) +  geom_beeswarm(cex = 3)
+```
+We can also plot the normalized count values for a given gene.
+
+### Heatmaps
+```{r, fig.width=6, fig.height=6}
+sig_genes<- rownames(resLFC[with(resLFC, abs(log2FoldChange > 1) & padj < 0.05),])
+colors <- colorRampPalette(c("darkblue","white","darkred"))(255)
+pheatmap(assay(vsd[sig_genes,]), annotation_col=meta,col=colors, scale="row")
+```
+Finally, we can generate a heatmap for a subset of genes with significant DE changes (padj < 0.05 and log2FoldChange >1).
+
+## Tissue-specific effects 
+So far, we haven't considered the different tissues into our model. One way to study the tissue-specific effects is through a mean group model.
+```{r, fig.width=7, fig.height=7}
+meta$group<- factor(paste0(".", meta$Tissue, "_", meta$Condition))
+meta_design<- model.matrix( ~ 0 + group, data=meta) # We remove the intercept in this model
+kable(head(meta_design))
+```
+This design is asking the question: What is the mean expression level in each tissue-condition group?
+Then, via contrasts we can specify comparisons, like, what is the difference in expression between CoV2 and mock in Cornea
+```{r}
+design(dds)<- meta_design
+dds <- DESeq(dds)
+dds
+resultsNames(dds)
+```
+We need to specify the contrast, asking what is the difference between CoV2 and mock in cornea. There are multiple ways to establish a contrast, one of them is to supply the contrast argument a list of two character vectors, a list of 2 character vectors: the names of the fold changes for the numerator, and the names of the fold changes for the denominator.
+```{r}
+res<- results(dds, contrast=list("group.cornea_CoV2", "group.cornea_mock")) # Let's obtain the results, as these contain the wald st
+resLFC <- lfcShrink(dds, contrast=list("group.cornea_CoV2", "group.cornea_mock"), type="ashr")
+EnhancedVolcano(resLFC,
+                lab = rownames(resLFC),
+                x = 'log2FoldChange',
+                y = 'pvalue')
+```
+Another way is to use a a numeric contrast vector with one element for each element in ‘resultsNames(object)’ (most general case).
+```{r}
+resultsNames(dds)
+resLFC_2 <- lfcShrink(dds, contrast=c(1,-1,0,0,0,0), type="ashr")
+identical(resLFC$log2FoldChange, resLFC_2$log2FoldChange)
+```
+We observe that the two approaches give us identical results.
+
+For the next section (gene set enrichment analysis), let's save the results from this model.
+```{r, eval=F}
+saveRDS(res, file="../results/res_Cornea_CoV2_vs_Mock.rds")
+```
+# Exercises
+
+* Using the mean group model, how can we obtain the DEG between CoV2 and mock in limbus?
+* As a follow up to the previous question, can you try different ways to perform the contrast? For example, using a list or a numeric contrast vector?
+
+# Acknowledgements
+This notebook used material from the following sources:
+
+* [DESeq2 vignette](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
+* [RNA-seq workflow](https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html)
+
+# Session info
+```{r}
+sessionInfo()
+```
