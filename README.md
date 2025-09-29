@@ -33,8 +33,8 @@ install.packages("enrichR")
 ```
 
 ## Outline
-* [01 - DESeq2](https://arielmadr.github.io/MiCM_RNA_Seq_2/Exercises/scripts/01_run_DESeq2.nb.html)
-* [02 - GSEA and ORA](https://arielmadr.github.io/MiCM_RNA_Seq_2/Exercises/scripts/02_gsea_and_ora.nb.html)
+* [01 DESeq2](https://arielmadr.github.io/MiCM_RNA_Seq_2/Exercises/scripts/01_run_DESeq2.nb.html)
+* [02 GSEA and ORA](https://arielmadr.github.io/MiCM_RNA_Seq_2/Exercises/scripts/02_gsea_and_ora.nb.html)
 
 ## References
 
