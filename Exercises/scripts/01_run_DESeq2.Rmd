@@ -217,7 +217,7 @@ saveRDS(res, file="../results/res_Cornea_CoV2_vs_Mock.rds")
 * As a follow up to the previous question, can you try different ways to perform the contrast? For example, using a list or a numeric contrast vector?
 
 # Acknowledgements
-This notebook used material from the following sources:
+This notebook used material adapted from the following sources:
 
 * [DESeq2 vignette](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
 * [RNA-seq workflow](https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html)

@@ -169,7 +169,7 @@ Similar as GSEA, we also observe enrichment for TNF alpha Signaling via NFKB and
 * Run GSEA using a different gene set. You can find the KEGG legacy gene set in the data folder.
 
 # Acknowledgements
-This notebook used material from the following sources:
+This notebook used material adapted from the following sources:
 
 * [fgsea vignette](https://bioconductor.org/packages/release/bioc/vignettes/fgsea/inst/doc/fgsea-tutorial.html)
 * [enrichR vignette](https://cran.r-project.org/web/packages/enrichR/vignettes/enrichR.html)

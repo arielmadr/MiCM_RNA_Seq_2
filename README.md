@@ -37,6 +37,15 @@ install.packages("enrichR")
 * [02 - GSEA and ORA](https://arielmadr.github.io/MiCM_RNA_Seq_2/Exercises/scripts/02_gsea_and_ora.nb.html)
 
 ## References
-*<Material Author/Adapted from disclaimer>*
-   
+
+*<This workshop uses processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028)>*
+
+*<This workshop  used material adapted from the following sources:>*
+
+* [DESeq2 vignette](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
+* [RNA-seq workflow](https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html)
+* [fgsea vignette](https://bioconductor.org/packages/release/bioc/vignettes/fgsea/inst/doc/fgsea-tutorial.html)
+* [enrichR vignette](https://cran.r-project.org/web/packages/enrichR/vignettes/enrichR.html)
+* [MiCM intro to RNA](https://github.com/aosakwe/MiCM_IntroToRNA)
+
 *Workshop created as part of the McGill Initiative in Computational Medicine*
