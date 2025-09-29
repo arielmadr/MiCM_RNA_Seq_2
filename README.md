@@ -38,9 +38,9 @@ install.packages("enrichR")
 
 ## References
 
-*<This workshop uses processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028)>*
+*This workshop uses processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028)*
 
-*<This workshop  used material adapted from the following sources:>*
+*This workshop  used material adapted from the following sources:*
 
 * [DESeq2 vignette](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
 * [RNA-seq workflow](https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html)
