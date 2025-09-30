@@ -50,4 +50,4 @@ These are the notebooks we will cover during our workshop:
 * [enrichR vignette](https://cran.r-project.org/web/packages/enrichR/vignettes/enrichR.html)
 * [MiCM intro to RNA](https://github.com/aosakwe/MiCM_IntroToRNA)
 
-*Workshop created as part of the McGill Initiative in Computational Medicine*
+*Workshop created as part of the McGill Initiative in Computational Medicine.*
