@@ -17,19 +17,8 @@ In R, install the following libraries (in case they are not already installed):
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install("DESeq2")
-BiocManager::install("vsn")
-install.packages("hexbin")
-install.packages("pheatmap")
-install.packages("RColorBrewer")
-BiocManager::install("EnhancedVolcano")
-install.packages("ggplot2")
-install.packages("ggbeeswarm")
-install.packages("ashr")
-install.packages("knit")
-BiocManager::install("fgsea")
-install.packages("GSA")
-install.packages("enrichR")
+BiocManager::install(c("DESeq2", "vsn", "EnhancedVolcano", "fgsea"))
+install.packages(c("hexbin", "pheatmap", "RColorBrewer", "ggplot2", "ggbeeswarm", "ashr", "knit", "GSA", "enrichR"))
 ```
 
 ## Outline
