@@ -33,12 +33,14 @@ install.packages("enrichR")
 ```
 
 ## Outline
+These are the notebooks we will cover during our workshop: 
+
 * [01 DESeq2](https://arielmadr.github.io/MiCM_RNA_Seq_2/Exercises/scripts/01_run_DESeq2.nb.html)
 * [02 GSEA and ORA](https://arielmadr.github.io/MiCM_RNA_Seq_2/Exercises/scripts/02_gsea_and_ora.nb.html)
 
 ## References
 
-*This workshop uses processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028)*
+*This workshop uses processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028).*
 
 *This workshop  used material adapted from the following sources:*
 

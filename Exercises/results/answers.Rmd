@@ -1,0 +1,66 @@
+---
+title: "MiCM: answers"
+date: "2025-10-23"
+output:
+  html_notebook:
+    df_print: paged
+    code_folding: show
+    toc: yes
+    toc_float: 
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r,echo=FALSE}
+htmltools::img(src = knitr::image_uri("images/micm_color_logo.png"), 
+               alt = 'logo', 
+               style = 'position:absolute; top:15px; right:0; padding:10px; max-width:50%;')
+```
+This notebook contains the answers to the exercises. 
+
+# 01 run DESeq2
+
+* Using the mean group model, how can we obtain the DEG between CoV2 and mock in limbus?
+
+```{r}
+res<- results(dds, contrast=list("group.limbus_CoV2", "group.limbus_mock")) # Let's obtain the results, as these contain the wald st
+resLFC <- lfcShrink(dds, contrast=list("group.limbus_CoV2", "group.limbus_mock"), type="ashr")
+EnhancedVolcano(resLFC,
+                lab = rownames(resLFC),
+                x = 'log2FoldChange',
+                y = 'pvalue')
+```
+
+* As a follow up to the previous question, can you try different ways to perform the contrast? For example, using a list or a numeric contrast vector?
+```{r}
+resultsNames(dds)
+resLFC <- lfcShrink(dds, contrast=c(0,0,1,-1,0,0), type="ashr")
+```
+
+# 02 GSEA and ORA
+
+* Run GSEA using a different gene set. You can find the KEGG legacy gene set in the data folder.
+
+```{r}
+# Loading the KEGG pathways
+geneset_file <- GSA::GSA.read.gmt("../data/c2.cp.kegg_legacy.v2025.1.Hs.symbols.gmt")
+geneSets <- geneset_file$genesets
+names(geneSets)<- geneset_file$geneset.names
+# Running fgsea
+fgseaRes <- fgsea(pathways = geneSets, 
+                  stats    = geneRanks,
+                  eps = 0, # For better p-value estimation
+                  minSize  = 15,
+                  maxSize  = 500)
+head(fgseaRes[order(-NES,pval)])
+topPathwaysUp <- fgseaRes[ES > 0][head(order(pval), n=10), pathway]
+topPathwaysDown <- fgseaRes[ES < 0][head(order(pval), n=10), pathway]
+topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
+plotGseaTable(geneSets[topPathways], geneRanks, fgseaRes, 
+              gseaParam=0.5)
+```
+
+# Session info
+```{r}
+sessionInfo()
+```
