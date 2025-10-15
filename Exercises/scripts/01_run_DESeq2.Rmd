@@ -30,6 +30,11 @@ The objectives of this session are:
 
 This workshop will use processed RNA-seq counts from this [study](https://doi.org/10.1016/j.stem.2021.04.028), where they studied the transcriptional response to SARS-CoV-2 infection in three tissues (cornea, limbus, sclera). The dataset consists of 18 samples, with three replicates per tissue and condition (mock vs CoV-2).
 
+The data can be found here:
+```{bash}
+ls ../data/
+```
+
 # DEseq2 workflow
 
 ## Load libraries
